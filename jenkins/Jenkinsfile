@@ -1,0 +1,41 @@
+pipeline {
+    agent {
+        label 'Front-1'
+    }
+
+    stages {
+        stage('Check and Remove Existing Container') {
+            steps {
+                script {
+                    sh 'sudo docker ps -a | grep harmonyo_front && sudo docker rm -f harmonyo_front || true'
+                }
+            }
+        }
+        stage('Clean docker with prune') {
+            steps {
+                script {
+                    sh 'sudo docker system prune -fa'
+                }
+            }
+        }
+        stage('Cloning git repository') {
+            steps {
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'GITHUB_TOKEN', url: 'https://github.com/Harmon-yo/harmonyo']])
+            }
+        }
+        stage('Build docker image') {
+            steps {
+                script {
+                    sh 'sudo docker build -t harmonyo_front:latest .'
+                }
+            }
+        }
+        stage('Deploy application') {
+            steps {
+                script {
+                    sh 'sudo docker run -dp 3000:3000 --dns 8.8.8.8 --dns 8.8.4.4 --name harmonyo_front harmonyo_front:latest'
+                }
+            }
+        }
+    }
+}
